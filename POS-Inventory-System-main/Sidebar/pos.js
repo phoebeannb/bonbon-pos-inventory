@@ -4,28 +4,28 @@
 // Optional: add image: 'relative/path/to-image.png' to display product photos
 const products = {
     chicken: [
-        { id: 1, name: 'Cloy Honey Soy', price: 149, category: 'chicken', image: 'Bonbon Pics/cloy honey soy.jpg'},
-        { id: 2, name: 'Boombayah', price: 149, category: 'chicken', image: 'Bonbon Pics/boombayah.jpg'},
-        { id: 3, name: 'Honey Butter Night', price: 149, category: 'chicken', image: 'Bonbon Pics/honey butter night.jpg'},
-        { id: 4, name: 'Oppa BB-Q', price: 149, category: 'chicken', image: 'Bonbon Pics/oppa bb-q.jpg'},
-        { id: 5, name: 'Chijeu Chikin', price: 149, category: 'chicken', image: 'Bonbon Pics/Chijeu Chikin.jpg'},
-        { id: 6, name: 'Olenji Chikin', price: 149, category: 'chicken', image: 'Bonbon Pics/olenji chikin.jpg'},
-        { id: 7, name: 'Salted Egg Chikin', price: 159, category: 'chicken', image: 'Bonbon Pics/salted egg chikin.jpg'},
-        { id: 8, name: 'Yangneom Nom', price: 159, category: 'chicken', image: 'Bonbon Pics/yangneom nom.jpg'},
-        { id: 9, name: 'Bonbon Buldak', price: 159, category: 'chicken', image: 'Bonbon Pics/bonbon buldak.jpg'},
-        { id: 10, name: 'Snow Cheese', price: 159, category: 'chicken', image: 'Bonbon Pics/snow cheese.jpg'},
-        { id: 11, name: 'Honey Mustard Chikin', price: 159, category: 'chicken', image: 'Bonbon Pics/honey mustard chikin.jpg'}
+        { id: 1, name: 'Cloy Honey Soy', price: 149, category: 'chicken', image: 'Images/cloy honey soy.jpg'},
+        { id: 2, name: 'Boombayah', price: 149, category: 'chicken', image: 'Images/boombayah.jpg'},
+        { id: 3, name: 'Honey Butter Night', price: 149, category: 'chicken', image: 'Images/honey butter night.jpg'},
+        { id: 4, name: 'Oppa BB-Q', price: 149, category: 'chicken', image: 'Images/Oppa BB-Q.jpg'},
+        { id: 5, name: 'Chijeu Chikin', price: 149, category: 'chicken', image: 'Images/Chijeu Chikin.jpg'},
+        { id: 6, name: 'Olenji Chikin', price: 149, category: 'chicken', image: 'Images/Olenji Chikin.jpg'},
+        { id: 7, name: 'Salted Egg Chikin', price: 159, category: 'chicken', image: 'Images/Salted Egg Chikin.jpg'},
+        { id: 8, name: 'Yangneom Nom', price: 159, category: 'chicken', image: 'Images/Yangneom Nom.jpg'},
+        { id: 9, name: 'Bonbon Buldak', price: 159, category: 'chicken', image: 'Images/Bonbon Buldak.jpg'},
+        { id: 10, name: 'Snow Cheese', price: 159, category: 'chicken', image: 'Images/snow cheese.jpg'},
+        { id: 11, name: 'Honey Mustard Chikin', price: 159, category: 'chicken', image: 'Images/Honey Mustard Chikin.jpg'}
     ],
     bubbletea: [
-        createBubbleTeaProduct(12, 'Classic', 45, 'Bonbon Pics/Milktea3.jpg'),
-        createBubbleTeaProduct(13, 'Wintermelon', 50, 'Bonbon Pics/Milktea3.jpg'),
-        createBubbleTeaProduct(14, 'Okinawa', 50, 'Bonbon Pics/Milktea3.jpg'),
-        createBubbleTeaProduct(15, 'Cookies & Cream', 60, 'Bonbon Pics/Milktea1.jpg'),
-        createBubbleTeaProduct(16, 'Matcha', 55, 'Bonbon Pics/Milktea4.jpg'),
-        createBubbleTeaProduct(17, 'Taro', 55, 'Bonbon Pics/Milktea4.jpg'),
-        createBubbleTeaProduct(18, 'Strawberry', 55, 'Bonbon Pics/Milktea1.jpg'),
-        createBubbleTeaProduct(19, 'Chocolate', 55, 'Bonbon Pics/Milktea4.jpg'),
-        createBubbleTeaProduct(20, 'Brown Sugar', 80, 'Bonbon Pics/Milktea2.jpg')
+        createBubbleTeaProduct(12, 'Classic', 45, 'Images/Milktea3.jpg'),
+        createBubbleTeaProduct(13, 'Wintermelon', 50, 'Images/Milktea3.jpg'),
+        createBubbleTeaProduct(14, 'Okinawa', 50, 'Images/Milktea3.jpg'),
+        createBubbleTeaProduct(15, 'Cookies & Cream', 60, 'Images/Milktea1.jpg'),
+        createBubbleTeaProduct(16, 'Matcha', 55, 'Images/Milktea4.jpg'),
+        createBubbleTeaProduct(17, 'Taro', 55, 'Images/Milktea4.jpg'),
+        createBubbleTeaProduct(18, 'Strawberry', 55, 'Images/Milktea1.jpg'),
+        createBubbleTeaProduct(19, 'Chocolate', 55, 'Images/Milktea4.jpg'),
+        createBubbleTeaProduct(20, 'Brown Sugar', 80, 'Images/Milktea2.jpg')
     ]
 };
 
@@ -42,6 +42,18 @@ function createBubbleTeaProduct(id, name, basePrice, image) {
             large: basePrice + 30
         }
     };
+}
+
+function resolveProductImageUrl(image) {
+    if (!image) return '';
+
+    // Keep uploaded images and remote URLs intact; normalize legacy file paths
+    // to the Images folder next to pos.php.
+    if (/^(data:|https?:|blob:)/i.test(image)) return image;
+
+    const fileName = image.replace(/\\/g, '/').split('/').pop();
+    const pageDirectory = window.location.pathname.slice(0, window.location.pathname.lastIndexOf('/') + 1);
+    return `${pageDirectory}Images/${encodeURIComponent(fileName)}`;
 }
 
 // Current order state
@@ -190,8 +202,9 @@ function createProductCard(product) {
     const card = document.createElement('div');
     card.className = 'product-card';
 
-    const productImageContent = product.image
-        ? `<img src="${product.image}" alt="${product.name}">`
+    const productImageUrl = resolveProductImageUrl(product.image);
+    const productImageContent = productImageUrl
+        ? `<img src="${productImageUrl}" alt="${product.name}">`
         : `<i class="fas fa-cloud"></i>`;
 
     const hasBubbleTeaSizes = product.category === 'bubbletea' && product.sizes;
@@ -304,8 +317,9 @@ function createOrderItem(item) {
     orderItem.className = 'order-item';
     orderItem.dataset.itemKey = item.key;
 
-    const orderImageContent = item.image
-        ? `<img src="${item.image}" alt="${item.name}">`
+    const orderImageUrl = resolveProductImageUrl(item.image);
+    const orderImageContent = orderImageUrl
+        ? `<img src="${orderImageUrl}" alt="${item.name}">`
         : `<i class="fas fa-cloud"></i>`;
 
     orderItem.innerHTML = `

@@ -18,10 +18,9 @@
                 <i class="fas fa-times"></i>
             </button>
             <div class="sidebar-user-info">
-                <img src="Bonbon Pics/Logo.png" alt="User avatar" class="sidebar-user-avatar" data-user-avatar data-default-avatar="Bonbon Pics/Logo.png">
+                <img src="Images/Logo.png" alt="User avatar" class="sidebar-user-avatar" data-user-avatar data-default-avatar="Images/Logo.png">
                 <div class="sidebar-user-text">
                     <span class="sidebar-user-name" data-user-name>Bonbon User</span>
-                    <small class="sidebar-user-email" data-user-email>user@example.com</small>
                 </div>
             </div>
             
@@ -61,7 +60,7 @@
                 <h2 class="page-title">Dashboard</h2>
                 <div class="user-profile">
                     <div class="user-icon">
-                        <img src="Bonbon Pics/Logo.png" alt="User avatar" data-user-avatar data-default-avatar="Bonbon Pics/Logo.png">
+                        <img src="Images/Logo.png" alt="User avatar" data-user-avatar data-default-avatar="Images/Logo.png">
                     </div>
                     <span class="user-name" data-user-name>User Name</span>
                 </div>
@@ -160,7 +159,7 @@
         </main>
     </div>
 
-    <script src="user-profile.js"></script>
+    <script src="user-profile.js?v=2"></script>
     <script src="dashboard.js"></script>
 </body>
 </html>

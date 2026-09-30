@@ -13,25 +13,111 @@ let preferencesData = loadPreferences();
 let accessLogs = loadAccessLogs();
 let systemSettings = loadSystemSettings();
 let regionalSettings = loadRegionalSettings();
+// Never keep a plaintext password in browser storage.
+delete securityData.password;
 
 document.addEventListener('DOMContentLoaded', () => {
     setupSidebarToggle();
     setupTabs();
+
+    loadSettingsFromDatabase().finally(() => {
+        initializeSettingsPage();
+    });
+});
+
+function initializeSettingsPage() {
     initializeProfileSection();
     initializeSecuritySection();
     initializeSystemSettingsSection();
     initializeRegionalSettingsSection();
-    
-    // Clear any existing saved logs
-    localStorage.removeItem(ACCESS_LOGS_STORAGE_KEY);
-    accessLogs = [];
-    
+
     renderAccessLogs();
     setupLogButtons();
-    
-    // Apply all settings on page load
     applyAllSettings();
-});
+}
+
+async function settingsApi(action, method = 'POST', payload = {}, formData = null) {
+    const options = { method, credentials: 'same-origin' };
+    if (formData) {
+        options.body = formData;
+    } else if (method !== 'GET') {
+        options.headers = { 'Content-Type': 'application/json' };
+        options.body = JSON.stringify(payload);
+    }
+
+    const response = await fetch(`settings_api.php?action=${encodeURIComponent(action)}`, options);
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Could not save settings to the database.');
+    }
+    return result;
+}
+
+async function loadSettingsFromDatabase() {
+    try {
+        const result = await settingsApi('load', 'GET');
+        const legacyEmail = profileData.email?.trim();
+        const isCustomLegacyEmail = legacyEmail &&
+            legacyEmail.toLowerCase() !== 'user@example.com' &&
+            legacyEmail.toLowerCase() !== result.profile.email.toLowerCase() &&
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(legacyEmail);
+
+        // Migrate an email saved by the older localStorage-only settings page
+        // instead of replacing it with the SQL seed account email.
+        if (result.profile.email.toLowerCase() === 'admin@bonbonkitchen.ph' && isCustomLegacyEmail) {
+            try {
+                await settingsApi('profile', 'POST', { ...result.profile, email: legacyEmail });
+                result.profile.email = legacyEmail;
+            } catch (error) {
+                console.error('Unable to migrate the previously saved email:', error);
+            }
+        }
+
+        profileData = result.profile;
+        securityData = { ...securityData, ...result.security };
+        systemSettings = result.system;
+        regionalSettings = result.regional;
+        preferencesData = result.preferences;
+        accessLogs = result.logs || [];
+        saveProfileData();
+        localStorage.setItem(SECURITY_STORAGE_KEY, JSON.stringify(securityData));
+        localStorage.setItem(SYSTEM_SETTINGS_STORAGE_KEY, JSON.stringify(systemSettings));
+        localStorage.setItem(REGIONAL_SETTINGS_STORAGE_KEY, JSON.stringify(regionalSettings));
+        localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(preferencesData));
+        document.dispatchEvent(new CustomEvent('profileUpdated', { detail: profileData }));
+    } catch (error) {
+        console.error('Unable to load settings from database:', error);
+    }
+}
+
+function getSettingsPayload() {
+    return {
+        ...systemSettings,
+        ...regionalSettings,
+        twoFactor: securityData.twoFactor,
+        loginAlerts: securityData.loginAlerts,
+        notifications: preferencesData.notifications,
+        autoUpdate: preferencesData.autoUpdate,
+        dataSharing: preferencesData.dataSharing,
+        theme: preferencesData.theme
+    };
+}
+
+async function saveSettingsToDatabase(feedbackElement) {
+    try {
+        await settingsApi('settings', 'POST', getSettingsPayload());
+        localStorage.setItem(SYSTEM_SETTINGS_STORAGE_KEY, JSON.stringify(systemSettings));
+        localStorage.setItem(REGIONAL_SETTINGS_STORAGE_KEY, JSON.stringify(regionalSettings));
+        localStorage.setItem(SECURITY_STORAGE_KEY, JSON.stringify(securityData));
+        localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(preferencesData));
+        applyAllSettings();
+        if (feedbackElement) showFeedback(feedbackElement, 'Settings saved to the database.', true);
+        return true;
+    } catch (error) {
+        if (feedbackElement) showFeedback(feedbackElement, error.message, false, true);
+        return false;
+    }
+}
 
 function applyAllSettings() {
     // Apply all settings immediately on page load
@@ -146,9 +232,9 @@ function initializeProfileSection() {
         profileImagePreview.src = profileData.photo;
     }
 
-    profileForm.addEventListener('submit', (event) => {
+    profileForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        profileData = {
+        const updatedProfile = {
             ...profileData,
             firstName: firstNameInput.value.trim(),
             lastName: lastNameInput.value.trim(),
@@ -156,9 +242,16 @@ function initializeProfileSection() {
             phone: phoneInput.value.trim()
         };
 
-        saveProfileData();
+        try {
+            await settingsApi('profile', 'POST', updatedProfile);
+            profileData = updatedProfile;
+            saveProfileData();
+        } catch (error) {
+            showFeedback(feedback, error.message, false, true);
+            return;
+        }
         updateProfileIdentity(profileFullName, profileEmailText, userNameDisplay);
-        showFeedback(feedback, 'Profile updated successfully!');
+        showFeedback(feedback, 'Profile updated in the database.', true);
         document.dispatchEvent(new CustomEvent('profileUpdated', { detail: profileData }));
     });
 
@@ -173,25 +266,26 @@ function updateProfileIdentity(nameEl, emailEl, headerNameEl) {
     headerNameEl.textContent = fullName;
 }
 
-function handleProfileImageChange(event) {
+async function handleProfileImageChange(event) {
     const file = event.target.files[0];
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-        profileData.photo = reader.result;
-        document.getElementById('profileImagePreview').src = reader.result;
+    const formData = new FormData();
+    formData.append('photo', file);
+    try {
+        const result = await settingsApi('avatar', 'POST', {}, formData);
+        profileData.photo = result.photo;
+        document.getElementById('profileImagePreview').src = result.photo;
         saveProfileData();
-        showFeedback(document.getElementById('profileFeedback'), 'Profile picture updated!');
+        showFeedback(document.getElementById('profileFeedback'), result.message, true);
         document.dispatchEvent(new CustomEvent('profileUpdated', { detail: profileData }));
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+        showFeedback(document.getElementById('profileFeedback'), error.message, false, true);
+    }
 }
 
 /* ---------- Security ---------- */
 function loadSecurityData() {
     const fallback = {
-        password: 'Bonbon123!',
         twoFactor: false,
         loginAlerts: true,
         lastPasswordChange: null
@@ -222,43 +316,36 @@ function initializeSecuritySection() {
         ? new Date(securityData.lastPasswordChange).toLocaleString()
         : 'Never';
 
-    securityForm.addEventListener('submit', (event) => {
+    securityForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         const current = document.getElementById('currentPasswordInput').value;
         const next = document.getElementById('newPasswordInput').value;
         const confirm = document.getElementById('confirmPasswordInput').value;
 
-        if (current !== securityData.password) {
-            showFeedback(feedback, 'Current password is incorrect.', true);
-            return;
+        try {
+            const result = await settingsApi('security', 'POST', {
+                currentPassword: current,
+                newPassword: next,
+                confirmPassword: confirm
+            });
+            securityData.lastPasswordChange = result.lastPasswordChange;
+            localStorage.setItem(SECURITY_STORAGE_KEY, JSON.stringify(securityData));
+            lastPasswordChange.textContent = new Date(result.lastPasswordChange).toLocaleString();
+            securityForm.reset();
+            showFeedback(feedback, result.message, true);
+        } catch (error) {
+            showFeedback(feedback, error.message, false, true);
         }
-
-        if (next.length < 8) {
-            showFeedback(feedback, 'New password must be at least 8 characters.', true);
-            return;
-        }
-
-        if (next !== confirm) {
-            showFeedback(feedback, 'New passwords do not match.', true);
-            return;
-        }
-
-        securityData.password = next;
-        securityData.lastPasswordChange = new Date().toISOString();
-        saveSecurityData();
-        lastPasswordChange.textContent = new Date(securityData.lastPasswordChange).toLocaleString();
-        securityForm.reset();
-        showFeedback(feedback, 'Password updated successfully!');
     });
 
-    twoFactorToggle.addEventListener('change', () => {
+    twoFactorToggle.addEventListener('change', async () => {
         securityData.twoFactor = twoFactorToggle.checked;
-        saveSecurityData();
+        if (!await saveSettingsToDatabase(feedback)) twoFactorToggle.checked = !twoFactorToggle.checked;
     });
 
-    loginAlertsToggle.addEventListener('change', () => {
+    loginAlertsToggle.addEventListener('change', async () => {
         securityData.loginAlerts = loginAlertsToggle.checked;
-        saveSecurityData();
+        if (!await saveSettingsToDatabase(feedback)) loginAlertsToggle.checked = !loginAlertsToggle.checked;
     });
 }
 
@@ -404,23 +491,24 @@ function initializeSystemSettingsSection() {
     // Apply settings on page load
     applySystemSettings();
 
-    systemSettingsForm.addEventListener('submit', (event) => {
+    systemSettingsForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        
+        const previousSettings = systemSettings;
         systemSettings = {
             language: languageSelect.value,
             dateFormat: dateFormatSelect.value,
             selectedDate: datePickerInput ? datePickerInput.value : null
         };
 
-        saveSystemSettings();
-        showFeedback(feedback, 'System settings saved successfully!', true);
-        
-        // Update date displays on current page immediately
-        updateAllDateDisplays();
-        
-        // Show visual feedback
-        showSettingsAppliedFeedback('systemSettingsForm');
+        if (await saveSettingsToDatabase(feedback)) {
+            updateAllDateDisplays();
+            showSettingsAppliedFeedback('systemSettingsForm');
+        } else {
+            systemSettings = previousSettings;
+            languageSelect.value = systemSettings.language;
+            dateFormatSelect.value = systemSettings.dateFormat;
+            if (datePickerInput) datePickerInput.value = systemSettings.selectedDate || '';
+        }
     });
 
     function updateDatePreview() {
@@ -635,9 +723,9 @@ function initializeRegionalSettingsSection() {
 
     applyRegionalSettings();
 
-    regionalSettingsForm.addEventListener('submit', (event) => {
+    regionalSettingsForm.addEventListener('submit', async (event) => {
         event.preventDefault();
-        
+        const previousSettings = regionalSettings;
         regionalSettings = {
             timeFormat: timeFormatSelect.value,
             timezone: timezoneSelect.value,
@@ -645,11 +733,15 @@ function initializeRegionalSettingsSection() {
             numberFormat: numberFormatSelect.value
         };
 
-        saveRegionalSettings();
-        showFeedback(feedback, 'Regional settings saved successfully!', true);
-        
-        // Show visual feedback
-        showSettingsAppliedFeedback('regionalSettingsForm');
+        if (await saveSettingsToDatabase(feedback)) {
+            showSettingsAppliedFeedback('regionalSettingsForm');
+        } else {
+            regionalSettings = previousSettings;
+            timeFormatSelect.value = regionalSettings.timeFormat;
+            timezoneSelect.value = regionalSettings.timezone;
+            currencySelect.value = regionalSettings.currency;
+            numberFormatSelect.value = regionalSettings.numberFormat;
+        }
     });
 }
 
@@ -750,27 +842,27 @@ function setupLogButtons() {
     const addDemoBtn = document.getElementById('addDemoLogBtn');
 
     if (refreshBtn) {
-        refreshBtn.addEventListener('click', () => {
-            accessLogs = loadAccessLogs();
+        refreshBtn.addEventListener('click', async () => {
+            try {
+                const result = await settingsApi('load', 'GET');
+                accessLogs = result.logs || [];
+            } catch (error) {
+                console.error('Unable to refresh access logs:', error);
+            }
             renderAccessLogs();
         });
     }
 
     if (addDemoBtn) {
-        addDemoBtn.addEventListener('click', () => {
-            const now = new Date();
-            const newLog = {
-                id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `sess-${Date.now()}`,
-                email: 'demo@bonbonkitchen.com',
-                timestamp: now.toISOString(),
-                device: ' on Android',
-                ip: `192.168.1.${Math.floor(Math.random() * 80) + 10}`,
-                status: 'success',
-                active: trueChrome
-            };
-            accessLogs.unshift(newLog);
-            saveAccessLogs();
-            renderAccessLogs();
+        addDemoBtn.addEventListener('click', async () => {
+            try {
+                await settingsApi('add_log', 'POST', { status: 'success' });
+                const result = await settingsApi('load', 'GET');
+                accessLogs = result.logs || [];
+                renderAccessLogs();
+            } catch (error) {
+                console.error('Unable to save access log:', error);
+            }
         });
     }
 }
@@ -849,15 +941,18 @@ function attachLogoutActions() {
     });
 }
 
-function logoutSession(sessionId) {
-    // Remove the log from the array instead of just marking it as terminated
+async function logoutSession(sessionId) {
     const index = accessLogs.findIndex(log => log.id === sessionId);
     if (index === -1) return;
 
-    // Remove the log entry completely
-    accessLogs.splice(index, 1);
-
-    saveAccessLogs();
+    try {
+        await settingsApi('logout_log', 'POST', { id: sessionId });
+        accessLogs[index].active = false;
+        accessLogs[index].status = 'terminated';
+    } catch (error) {
+        console.error('Unable to update access log:', error);
+        return;
+    }
     renderAccessLogs();
 }
 

@@ -1,7 +1,7 @@
 // Shared user profile helper
 (function () {
     const STORAGE_KEY = 'bonbonUserProfile';
-    const DEFAULT_AVATAR = 'Bonbon Pics/Logo.png';
+    const DEFAULT_AVATAR = 'Images/Logo.png';
 
     function loadProfile() {
         const defaults = {
@@ -52,6 +52,13 @@
         document.addEventListener('profileUpdated', event => {
             const profile = event.detail || loadProfile();
             applyProfile(profile);
+        });
+
+        // Keep the sidebar in sync when Settings is saved in another tab.
+        window.addEventListener('storage', event => {
+            if (event.key === STORAGE_KEY) {
+                applyProfile(loadProfile());
+            }
         });
     }
 

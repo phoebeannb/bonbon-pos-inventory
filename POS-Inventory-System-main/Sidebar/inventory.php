@@ -1,9 +1,3 @@
-<?php 
-
-include '../Sidebar/db_connection.php'; 
-
-?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,10 +17,9 @@ include '../Sidebar/db_connection.php';
                 <i class="fas fa-times"></i>
             </button>
             <div class="sidebar-user-info">
-                <img src="Bonbon Pics/Logo.png" alt="User avatar" class="sidebar-user-avatar" data-user-avatar data-default-avatar="Bonbon Pics/Logo.png">
+                <img src="Images/Logo.png" alt="User avatar" class="sidebar-user-avatar" data-user-avatar data-default-avatar="Images/Logo.png">
                 <div class="sidebar-user-text">
-                    <span class="sidebar-user-name" data-user-name>Bonbon Kitchen</span>
-                    <small class="sidebar-user-email" data-user-email>user@example.com</small>
+                    <span class="sidebar-user-name" data-user-name>BonBon Kitchen</span>
                 </div>
             </div>
             
@@ -66,15 +59,15 @@ include '../Sidebar/db_connection.php';
                 <h2 class="page-title">Inventory</h2>
                 <div class="user-profile">
                     <div class="user-icon">
-                        <img src="Bonbon Pics/Logo.png" alt="User avatar" data-user-avatar data-default-avatar="Bonbon Pics/Logo.png">
+                        <img src="Images/Logo.png" alt="User avatar" data-user-avatar data-default-avatar="Images/Logo.png">
                     </div>
-                    <span class="user-name" data-user-name>User Name</span>
+                    <span class="user-name" data-user-name>BonBon Kitchen</span>
                 </div>
             </header>
 
             <!-- Summary Cards -->
             <section class="inventory-summary">
-                <div class="summary-card">
+                <div class="summary-card" id="productsInStockCard">
                     <div class="summary-header">
                         <h3 class="summary-title">Products in Stock</h3>
                         <span class="summary-icon"><i class="fas fa-box"></i></span>
@@ -82,15 +75,15 @@ include '../Sidebar/db_connection.php';
                     <div class="summary-value" id="productsInStock">0</div>
                 </div>
 
-                <div class="summary-card">
+                <div class="summary-card" id="totalItemsCard">
                     <div class="summary-header">
-                        <h3 class="summary-title">Total Items</h3>
+                        <h3 class="summary-title">Total Products</h3>
                         <span class="summary-icon"><i class="fas fa-box"></i></span>
                     </div>
                     <div class="summary-value" id="totalItems">0</div>
                 </div>
 
-                <div class="summary-card">
+                <div class="summary-card" id="lowStockCard">
                     <div class="summary-header">
                         <h3 class="summary-title">Low Stock</h3>
                         <span class="summary-icon"><i class="fas fa-exclamation-triangle"></i></span>
@@ -98,7 +91,7 @@ include '../Sidebar/db_connection.php';
                     <div class="summary-value" id="lowStock">0</div>
                 </div>
 
-                <div class="summary-card">
+                <div class="summary-card" id="outOfStockCard">
                     <div class="summary-header">
                         <h3 class="summary-title">Out of Stock</h3>
                         <span class="summary-icon"><i class="fas fa-ban"></i></span>
@@ -106,12 +99,26 @@ include '../Sidebar/db_connection.php';
                     <div class="summary-value" id="outOfStock">0</div>
                 </div>
 
-                <div class="summary-card">
+                <div class="summary-card" id="totalValueCard">
                     <div class="summary-header">
                         <h3 class="summary-title">Total Value</h3>
                         <span class="summary-icon"><i class="fas fa-peso-sign"></i></span>
                     </div>
                     <div class="summary-value" id="totalValue">₱0.00</div>
+                </div>
+                <div class="summary-card" id="lowIngredientsCard">
+                    <div class="summary-header">
+                        <h3 class="summary-title">Low Ingredients</h3>
+                        <span class="summary-icon"><i class="fas fa-seedling"></i></span>
+                    </div>
+                    <div class="summary-value" id="lowIngredients">0</div>
+                </div>
+                <div class="summary-card" id="outIngredientsCard">
+                    <div class="summary-header">
+                        <h3 class="summary-title">Out of Ingredients</h3>
+                        <span class="summary-icon"><i class="fas fa-exclamation-circle"></i></span>
+                    </div>
+                    <div class="summary-value" id="outIngredients">0</div>
                 </div>
             </section>
 
@@ -121,13 +128,14 @@ include '../Sidebar/db_connection.php';
                     <i class="fas fa-plus"></i>
                     Add Product
                 </button>
+                
             </div>
 
             <!-- Products Details Section -->
             <section class="products-details">
                 <div class="details-header">
-                    <h3 class="details-title">Products Details:</h3>
-                    <div class="details-controls">
+                        <h3 class="details-title">Products Details</h3> 
+                        <div class="details-controls">
                         <div class="search-container">
                             <input type="text" id="searchInput" class="search-input" placeholder="Search here">
                             <i class="fas fa-search search-icon"></i>
@@ -156,10 +164,10 @@ include '../Sidebar/db_connection.php';
                                 <th>Product ID</th>
                                 <th>Product Name</th>
                                 <th>Category</th>
-                                <th>Price</th>
-                                <th>Stock</th>
                                 <th>Status</th>
-                                <th>Value</th>
+                                <th>Ingredients Stock</th>
+                                <th>Possible Servings</th>
+                                <th>Ingredients Short</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -186,12 +194,13 @@ include '../Sidebar/db_connection.php';
             </div>
             <form class="modal-body" id="productForm">
                 <div class="form-group">
-                    <label for="productIdInput">Product ID</label>
-                    <input type="text" id="productIdInput" class="form-input" placeholder="e.g. 0123456" required>
+                    <label for="productIdInput">Product ID:</label>
+                    <input type="text" id="productIdInput" class="form-input" placeholder="e.g. CHK-0001 (auto-generated)" required>
+                    <small class="form-hint">ID will be auto-generated based on category (CHK, BT, SUP, etc.)</small>
                 </div>
                 <div class="form-group">
                     <label for="productNameInput">Product Name:</label>
-                    <input type="text" id="productNameInput" class="form-input" placeholder="e.g. 16oz Cup" required>
+                    <input type="text" id="productNameInput" class="form-input" placeholder="e.g. Cup" required>
                 </div>
                 <div class="form-group">
                     <label for="productCategoryInput">Category:</label>
@@ -211,6 +220,30 @@ include '../Sidebar/db_connection.php';
                     <label for="productStockInput">Stock:</label>
                     <input type="number" id="productStockInput" class="form-input" placeholder="e.g. 50" min="0" required>
                 </div>
+                <div class="form-group">
+                    <label>Status:</label>
+                    <div><span class="status-badge in-stock" id="productStatusPreview">In Stock</span></div>
+                </div>
+                <div class="form-group">
+                    <label>Value:</label>
+                    <div class="summary-value" id="productValuePreview">₱0.00</div>
+                </div>
+                <div class="form-group">
+                    <label>Ingredients per Serving:</label>
+                    <div id="productIngredientsPreview">-</div>
+                    <small class="form-hint">Matches table columns Ingredients / Possible Servings / Ingredients Short</small>
+                    <div style="margin-top:8px;">
+                        <button type="button" class="add-product-btn" id="editRecipeFromFormBtn"><i class="fas fa-utensils"></i> Edit Recipe</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Possible Servings:</label>
+                    <div id="productServingsPreview">-</div>
+                </div>
+                <div class="form-group">
+                    <label>Ingredients Short:</label>
+                    <div id="productShortPreview">-</div>
+                </div>
                 <div class="form-actions">
                     <button type="button" class="cancel-btn" id="cancelBtn">Cancel</button>
                     <button type="submit" class="save-btn">Save</button>
@@ -219,17 +252,100 @@ include '../Sidebar/db_connection.php';
         </div>
     </div>
 
-    <script>
-        // Pass PHP data to JavaScript
-        window.productsData = <?php echo json_encode($products_data); ?>;
-        window.summaryData = <?php echo json_encode($summary_data); ?>;
-        window.categoriesData = <?php echo json_encode($categories_data); ?>;
-        
-        console.log('Products loaded from database:', window.productsData.length);
-        console.log('Summary data:', window.summaryData);
-        console.log('Categories loaded:', window.categoriesData.length);
-    </script>
-    <script src="user-profile.js"></script>
+    <!-- Recipe Editor Modal -->
+    <div class="modal-overlay" id="recipeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="recipeModalTitle">
+                    <i class="fas fa-utensils"></i>
+                    Edit Recipe
+                </h3>
+                <button class="close-btn" id="closeRecipeModalBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form class="modal-body" id="recipeForm">
+                <div class="form-group">
+                    <label>Flavor/Product:</label>
+                    <input type="text" id="recipeProductName" class="form-input readonly" readonly>
+                    <small class="form-hint">Ingredients required per serving</small>
+                </div>
+                <div class="table-container">
+                    <table class="products-table">
+                        <thead>
+                            <tr>
+                                <th>Ingredient Name</th>
+                                <th>Unit</th>
+                                <th>Qty per Serving</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recipeTableBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" id="addRecipeRowBtn">Add Ingredient</button>
+                    <button type="button" class="cancel-btn" id="cancelRecipeBtn">Cancel</button>
+                    <button type="submit" class="save-btn">Save Recipe</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-content confirm-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-question-circle"></i> Confirm Action</h3>
+                <button class="close-btn" id="closeConfirmBtn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage"></p>
+                <div class="modal-actions" style="display:flex;justify-content:center;gap:12px;">
+                    <button class="primary-btn" id="confirmYesBtn">Yes</button>
+                    <button class="secondary-btn" id="confirmNoBtn">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="noticeModal">
+        <div class="modal-content notice-modal">
+            <div class="modal-header">
+                <h3 id="noticeTitle"><i class="fas fa-info-circle"></i> Notice</h3>
+                <button class="close-btn" id="closeNoticeBtn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <p id="noticeMessage"></p>
+                <div class="modal-actions" style="display:flex;justify-content:center;gap:12px;">
+                    <button class="primary-btn" id="noticeOkBtn">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="ingredientModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="ingredientModalTitle"><i class="fas fa-tools"></i> Manage Ingredient Stock</h3>
+                <button class="close-btn" id="closeIngredientModalBtn"><i class="fas fa-times"></i></button>
+            </div>
+            <form class="modal-body" id="ingredientForm">
+                <div id="ingredientFormBody"></div>
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" id="cancelIngredientModalBtn">Cancel</button>
+                    <button type="submit" class="save-btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="core/utils.js"></script>
+    <script src="core/sidebar-manager.js"></script>
+    <script src="user-profile.js?v=2"></script>
+    <script src="core/logout-modal.js"></script>
     <script src="inventory.js"></script>
 </body>
 </html>
