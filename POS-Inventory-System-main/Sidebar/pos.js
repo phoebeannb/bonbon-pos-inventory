@@ -273,6 +273,7 @@ function addToOrder(product, size = null, overridePrice = null) {
             id: product.id,
             name: size ? `${product.name} (${capitalize(size)})` : product.name,
             baseName: product.name,
+            category: product.category,
             size: size,
             price: priceToUse,
             image: product.image || null,

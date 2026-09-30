@@ -1,12 +1,86 @@
 // Dashboard JavaScript
 
+let activeDashboardData = null;
+let dashboardResizeTimeout;
+
 // Initialize charts when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    activeDashboardData = combineDashboardData(window.dashboardData || {});
+    updateDashboardKpis();
     initializeCharts();
     setupNavigation();
     setupClickableCards();
     setupSidebarToggle();
 });
+
+window.addEventListener('storage', event => {
+    if (event.key === 'bonbonPosOrders') {
+        activeDashboardData = combineDashboardData(window.dashboardData || {});
+        updateDashboardKpis();
+        initializeCharts();
+    }
+});
+
+window.addEventListener('resize', () => {
+    clearTimeout(dashboardResizeTimeout);
+    dashboardResizeTimeout = setTimeout(initializeCharts, 250);
+});
+
+function combineDashboardData(databaseData) {
+    const combined = JSON.parse(JSON.stringify(databaseData || {}));
+    combined.kpis = { ...(combined.kpis || {}) };
+    combined.sales = Array.isArray(combined.sales) ? combined.sales : [];
+    combined.bubbleTea = Array.isArray(combined.bubbleTea) ? combined.bubbleTea : [];
+    combined.chicken = Array.isArray(combined.chicken) ? combined.chicken : [];
+
+    let localOrders = [];
+    try {
+        const stored = JSON.parse(localStorage.getItem('bonbonPosOrders') || '[]');
+        if (Array.isArray(stored)) localOrders = stored;
+    } catch (error) {
+        console.warn('Could not read POS orders from browser storage.', error);
+    }
+
+    const databaseOrderCount = Number(combined.kpis.paidOrderCount) || 0;
+    let allOrderValue = (Number(combined.kpis.averageOrderValue) || 0) * databaseOrderCount;
+    let allOrderCount = databaseOrderCount;
+    const salesByDate = new Map(combined.sales.map(row => [row.date, Number(row.revenue) || 0]));
+    const favorites = {
+        bubbleTea: new Map(combined.bubbleTea.map(row => [row.name, Number(row.quantity) || 0])),
+        chicken: new Map(combined.chicken.map(row => [row.name, Number(row.quantity) || 0]))
+    };
+    const today = new Date().toISOString().slice(0, 10);
+    const month = today.slice(0, 7);
+
+    localOrders.forEach(order => {
+        const items = Array.isArray(order.items) ? order.items : [];
+        const amount = Number(order.total) || items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0), 0);
+        const date = order.dateISO || '';
+        allOrderValue += amount;
+        allOrderCount += 1;
+        if (date === today) combined.kpis.todayRevenue = (Number(combined.kpis.todayRevenue) || 0) + amount;
+        if (date.slice(0, 7) === month) combined.kpis.monthlyRevenue = (Number(combined.kpis.monthlyRevenue) || 0) + amount;
+        if (date) salesByDate.set(date, (salesByDate.get(date) || 0) + amount);
+
+        items.forEach(item => {
+            const quantity = Number(item.quantity) || 0;
+            const category = item.category || ((Number(item.id) >= 12 && Number(item.id) <= 20) ? 'bubbletea' : 'chicken');
+            const key = category === 'bubbletea' ? 'bubbleTea' : (category === 'chicken' ? 'chicken' : null);
+            if (!key || quantity <= 0) return;
+            const name = item.baseName || String(item.name || '').replace(/\s+\([^)]*\)$/, '');
+            favorites[key].set(name, (favorites[key].get(name) || 0) + quantity);
+        });
+    });
+
+    combined.kpis.averageOrderValue = allOrderCount ? allOrderValue / allOrderCount : 0;
+    combined.sales = Array.from(salesByDate, ([date, revenue]) => ({ date, revenue }))
+        .sort((a, b) => a.date.localeCompare(b.date)).slice(-7);
+    combined.bubbleTea = Array.from(favorites.bubbleTea, ([name, quantity]) => ({ name, quantity }))
+        .sort((a, b) => b.quantity - a.quantity).slice(0, 5);
+    combined.chicken = Array.from(favorites.chicken, ([name, quantity]) => ({ name, quantity }))
+        .sort((a, b) => b.quantity - a.quantity).slice(0, 5);
+    return combined;
+}
 
 // Setup responsive sidebar toggle
 function setupSidebarToggle() {
@@ -96,16 +170,7 @@ function setupClickableCards() {
                 // Add active to inventory
                 inventoryNav.classList.add('active');
                 
-                // Visual feedback
-                this.style.transform = 'scale(0.98)';
-                setTimeout(() => {
-                    this.style.transform = '';
-                }, 150);
-                
-                console.log(`Navigating to: ${targetPage}`);
-                
-                // You can add actual navigation logic here later
-                // For example: window.location.href = `${targetPage}.html`;
+                window.location.href = `${targetPage}.php`;
             }
         });
         
@@ -120,151 +185,149 @@ function setupClickableCards() {
     });
 }
 
-// Initialize charts with empty/placeholder data
+function updateDashboardKpis() {
+    const data = activeDashboardData || window.dashboardData || {};
+    const kpis = data.kpis || {};
+    const moneyKeys = new Set(['todayRevenue', 'monthlyRevenue', 'averageOrderValue', 'totalValue']);
+    document.querySelectorAll('[data-kpi]').forEach(element => {
+        const key = element.dataset.kpi;
+        const value = Number(kpis[key]) || 0;
+        element.textContent = moneyKeys.has(key)
+            ? `₱${value.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : value.toLocaleString('en-PH');
+    });
+
+    const oldError = document.querySelector('.dashboard-data-error');
+    if (oldError) oldError.remove();
+    if (data.error) {
+        const message = document.createElement('p');
+        message.className = 'dashboard-data-error';
+        message.setAttribute('role', 'alert');
+        message.textContent = data.error;
+        document.querySelector('.main-content').prepend(message);
+    }
+}
+
+// Render charts from the sales and order-item data supplied by dashboard.php.
 function initializeCharts() {
-    // Sales Bar Chart
+    const data = activeDashboardData || window.dashboardData || {};
     const salesCanvas = document.getElementById('salesChart');
-    if (salesCanvas) {
-        const salesCtx = salesCanvas.getContext('2d');
-        
-        // Set canvas size
-        salesCanvas.width = salesCanvas.offsetWidth;
-        salesCanvas.height = salesCanvas.offsetHeight;
-        
-        // Draw placeholder chart
-        drawPlaceholderBarChart(salesCtx, salesCanvas.width, salesCanvas.height);
-    }
-    
-    // Pie Chart
-    const pieCanvas = document.getElementById('pieChart');
-    if (pieCanvas) {
-        const pieCtx = pieCanvas.getContext('2d');
-        
-        // Set canvas size
-        pieCanvas.width = pieCanvas.offsetWidth;
-        pieCanvas.height = pieCanvas.offsetHeight;
-        
-        // Draw placeholder pie chart
-        drawPlaceholderPieChart(pieCtx, pieCanvas.width, pieCanvas.height);
-    }
+    const teaCanvas = document.getElementById('bubbleTeaChart');
+    const chickenCanvas = document.getElementById('pieChart');
+    if (salesCanvas) drawSalesChart(salesCanvas, data.sales || []);
+    if (teaCanvas) drawFavoriteChart(teaCanvas, data.bubbleTea || []);
+    if (chickenCanvas) drawFavoriteChart(chickenCanvas, data.chicken || []);
 
-    // Bubble Tea Pie Chart
-    const bubbleTeaCanvas = document.getElementById('bubbleTeaChart');
-    if (bubbleTeaCanvas) {
-        const bubbleTeaCtx = bubbleTeaCanvas.getContext('2d');
-
-        bubbleTeaCanvas.width = bubbleTeaCanvas.offsetWidth;
-        bubbleTeaCanvas.height = bubbleTeaCanvas.offsetHeight;
-
-        drawPlaceholderPieChart(bubbleTeaCtx, bubbleTeaCanvas.width, bubbleTeaCanvas.height);
-    }
-
-    // Handle window resize
-    let resizeTimeout;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(function() {
-            initializeCharts();
-        }, 250);
-    });
 }
 
-// Draw placeholder bar chart
-function drawPlaceholderBarChart(ctx, width, height) {
-    // Clear canvas
+function sizeCanvas(canvas) {
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    if (!width || !height) return null;
+    canvas.width = width;
+    canvas.height = height;
+    return { ctx: canvas.getContext('2d'), width, height };
+}
+
+function drawSalesChart(canvas, sales) {
+    const size = sizeCanvas(canvas);
+    if (!size) return;
+    const { ctx, width, height } = size;
     ctx.clearRect(0, 0, width, height);
-    
-    // Chart dimensions
-    const padding = 40;
-    const chartWidth = width - (padding * 2);
-    const chartHeight = height - (padding * 2);
-    const barWidth = chartWidth / 5;
-    const maxValue = 20;
-    
-    // Draw grid lines
-    ctx.strokeStyle = '#e0e0e0';
+    const pad = { left: 48, right: 16, top: 20, bottom: 42 };
+    const chartWidth = width - pad.left - pad.right;
+    const chartHeight = height - pad.top - pad.bottom;
+    const maxValue = Math.max(1, ...sales.map(row => Number(row.revenue) || 0));
+    const tick = maxValue / 4;
+
+    ctx.font = '12px sans-serif';
     ctx.lineWidth = 1;
-    
     for (let i = 0; i <= 4; i++) {
-        const y = padding + (chartHeight / 4) * i;
+        const y = pad.top + chartHeight * i / 4;
+        ctx.strokeStyle = '#e5e5e5';
         ctx.beginPath();
-        ctx.moveTo(padding, y);
-        ctx.lineTo(width - padding, y);
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(width - pad.right, y);
         ctx.stroke();
-        
-        // Y-axis labels
-        ctx.fillStyle = '#666';
-        ctx.font = '12px sans-serif';
+        ctx.fillStyle = '#777';
         ctx.textAlign = 'right';
-        ctx.fillText((maxValue - (i * 5)).toString(), padding - 10, y + 4);
+        ctx.fillText(Math.round(maxValue - tick * i).toLocaleString('en-PH'), pad.left - 8, y + 4);
     }
-    
-    // Draw bars (placeholder - empty bars)
-    const items = ['Item 1', 'Item 2', 'Item 3', 'Item 4'];
-    const colors = ['#FFD700', '#8B4513', '#FF8C00', '#8B0000'];
-    
-    items.forEach((item, index) => {
-        const x = padding + (index + 1) * barWidth;
-        const barHeight = 0; // Empty bars for placeholder
-        
-        // Draw bar background (empty)
-        ctx.fillStyle = colors[index];
-        ctx.fillRect(x - barWidth / 2 + 10, padding + chartHeight - barHeight, barWidth - 20, barHeight);
-        
-        // X-axis labels
-        ctx.fillStyle = '#666';
-        ctx.font = '12px sans-serif';
+
+    if (!sales.length) {
+        ctx.fillStyle = '#999';
         ctx.textAlign = 'center';
-        ctx.fillText(item, x, height - padding + 20);
+        ctx.fillText('No paid sales recorded', width / 2, height / 2);
+        return;
+    }
+
+    const slot = chartWidth / sales.length;
+    const barWidth = Math.min(54, slot * 0.62);
+    sales.forEach((row, index) => {
+        const value = Number(row.revenue) || 0;
+        const barHeight = (value / maxValue) * chartHeight;
+        const x = pad.left + slot * index + (slot - barWidth) / 2;
+        const y = pad.top + chartHeight - barHeight;
+        ctx.fillStyle = '#ff8c00';
+        ctx.fillRect(x, y, barWidth, barHeight);
+        ctx.fillStyle = '#555';
+        ctx.textAlign = 'center';
+        const date = new Date(`${row.date}T00:00:00`);
+        ctx.fillText(Number.isNaN(date.getTime()) ? row.date : date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }), x + barWidth / 2, height - 15);
     });
-    
-    // Draw "No Data" message
-    ctx.fillStyle = '#999';
-    ctx.font = '16px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('No data available', width / 2, height / 2);
 }
 
-// Draw placeholder pie chart
-function drawPlaceholderPieChart(ctx, width, height) {
-    // Clear canvas
+function drawFavoriteChart(canvas, rows) {
+    const size = sizeCanvas(canvas);
+    if (!size) return;
+    const { ctx, width, height } = size;
     ctx.clearRect(0, 0, width, height);
-    
-    // Chart center and radius
+    const colors = ['#ff8c00', '#8b0000', '#ffd700', '#7fbf7f', '#6b8eae'];
+    const items = rows.slice(0, 5).filter(row => Number(row.quantity) > 0);
     const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = Math.min(width, height) / 3;
-    
-    // Draw empty circle
-    ctx.strokeStyle = '#e0e0e0';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.stroke();
-    
-    // Draw "No Data" message
-    ctx.fillStyle = '#999';
-    ctx.font = '16px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('No data available', centerX, centerY);
-    
-    // Draw placeholder legend
-    const items = ['Item 1', 'Item 2', 'Item 3'];
-    const colors = ['#FF8C00', '#8B0000', '#FFD700'];
-    const startY = centerY + radius + 30;
-    
-    items.forEach((item, index) => {
-        const y = startY + (index * 25);
-        
-        // Color box
-        ctx.fillStyle = colors[index];
-        ctx.fillRect(centerX - 100, y - 10, 15, 15);
-        
-        // Label
-        ctx.fillStyle = '#666';
+    const centerY = Math.min(112, height * 0.38);
+    const radius = Math.min(82, width * 0.22, height * 0.28);
+    const total = items.reduce((sum, row) => sum + Number(row.quantity), 0);
+
+    if (!total) {
+        ctx.strokeStyle = '#e2e2e2';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#999';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No paid sales recorded', centerX, centerY + 5);
+        return;
+    }
+
+    let angle = -Math.PI / 2;
+    items.forEach((row, index) => {
+        const slice = Number(row.quantity) / total * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, angle, angle + slice);
+        ctx.closePath();
+        ctx.fillStyle = colors[index % colors.length];
+        ctx.fill();
+        angle += slice;
+    });
+
+    const legendTop = Math.min(height - 22, centerY + radius + 26);
+    items.forEach((row, index) => {
+        const column = index % 2;
+        const line = Math.floor(index / 2);
+        const x = Math.max(12, centerX - 132 + column * 150);
+        const y = legendTop + line * 19;
+        if (y > height - 5) return;
+        ctx.fillStyle = colors[index % colors.length];
+        ctx.fillRect(x, y - 10, 12, 12);
+        ctx.fillStyle = '#555';
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText(item, centerX - 80, y + 3);
+        const name = row.name.length > 18 ? `${row.name.slice(0, 17)}…` : row.name;
+        ctx.fillText(`${name} (${row.quantity})`, x + 18, y);
     });
 }
 

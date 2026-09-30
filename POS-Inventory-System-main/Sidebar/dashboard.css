@@ -473,3 +473,9 @@ canvas {
     outline: 2px solid #8B0000;
     outline-offset: 2px;
 }
+
+.dashboard-data-error {
+    margin: 0 0 16px;
+    color: #8b0000;
+    font-size: 14px;
+}

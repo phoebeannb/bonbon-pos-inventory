@@ -1,4 +1,74 @@
-<?php include 'db_connection.php'; ?>
+<?php
+include 'db_connection.php';
+
+$dashboardData = [
+    'kpis' => [
+        'todayRevenue' => 0, 'monthlyRevenue' => 0, 'averageOrderValue' => 0,
+        'productsInStock' => 0, 'totalItems' => 0, 'lowStock' => 0,
+        'outOfStock' => 0, 'totalValue' => 0
+    ],
+    'sales' => [], 'bubbleTea' => [], 'chicken' => []
+];
+
+try {
+    $salesResult = $conn->query("SELECT
+        COALESCE(SUM(CASE WHEN DATE(placed_at) = CURDATE() THEN total_amount ELSE 0 END), 0) AS today_revenue,
+        COALESCE(SUM(CASE WHEN YEAR(placed_at) = YEAR(CURDATE()) AND MONTH(placed_at) = MONTH(CURDATE()) THEN total_amount ELSE 0 END), 0) AS monthly_revenue,
+        COALESCE(AVG(total_amount), 0) AS average_order_value, COUNT(*) AS paid_order_count
+        FROM orders WHERE order_status = 'paid'");
+    $salesSummary = $salesResult->fetch_assoc();
+
+    $stockResult = $conn->query("SELECT
+        COUNT(*) AS total_items,
+        COALESCE(SUM(CASE WHEN p.stock_quantity > 0 THEN 1 ELSE 0 END), 0) AS products_in_stock,
+        COALESCE(SUM(CASE WHEN p.stock_quantity > 0 AND p.stock_quantity <= p.reorder_level
+            AND COALESCE(c.slug, '') NOT IN ('chicken', 'bubbletea') THEN 1 ELSE 0 END), 0) AS low_stock,
+        COALESCE(SUM(CASE WHEN p.stock_quantity = 0 THEN 1 ELSE 0 END), 0) AS out_of_stock,
+        COALESCE(SUM(p.stock_quantity * p.selling_price), 0) AS total_value
+        FROM products p LEFT JOIN product_categories c ON c.category_id = p.category_id
+        WHERE p.is_active = 1 AND COALESCE(c.slug, '') <> 'cups'");
+    $stockSummary = $stockResult->fetch_assoc();
+
+    $dashboardData['kpis'] = [
+        'todayRevenue' => (float)$salesSummary['today_revenue'],
+        'monthlyRevenue' => (float)$salesSummary['monthly_revenue'],
+        'averageOrderValue' => (float)$salesSummary['average_order_value'],
+        'paidOrderCount' => (int)$salesSummary['paid_order_count'],
+        'productsInStock' => (int)$stockSummary['products_in_stock'],
+        'totalItems' => (int)$stockSummary['total_items'],
+        'lowStock' => (int)$stockSummary['low_stock'],
+        'outOfStock' => (int)$stockSummary['out_of_stock'],
+        'totalValue' => (float)$stockSummary['total_value']
+    ];
+
+    $dailySales = $conn->query("SELECT DATE(placed_at) AS sale_date, SUM(total_amount) AS revenue
+        FROM orders WHERE order_status = 'paid' GROUP BY DATE(placed_at)
+        ORDER BY sale_date DESC LIMIT 7");
+    while ($sale = $dailySales->fetch_assoc()) {
+        $dashboardData['sales'][] = ['date' => $sale['sale_date'], 'revenue' => (float)$sale['revenue']];
+    }
+    $dashboardData['sales'] = array_reverse($dashboardData['sales']);
+
+    foreach (['bubbleTea' => 'bubbletea', 'chicken' => 'chicken'] as $key => $category) {
+        $stmt = $conn->prepare("SELECT oi.item_name AS name, SUM(oi.quantity) AS quantity
+            FROM order_items oi JOIN orders o ON o.order_id = oi.order_id
+            JOIN products p ON p.product_id = oi.product_id
+            JOIN product_categories c ON c.category_id = p.category_id
+            WHERE o.order_status = 'paid' AND c.slug = ?
+            GROUP BY oi.item_name ORDER BY quantity DESC, name ASC LIMIT 5");
+        $stmt->bind_param('s', $category);
+        $stmt->execute();
+        $items = $stmt->get_result();
+        while ($item = $items->fetch_assoc()) {
+            $dashboardData[$key][] = ['name' => $item['name'], 'quantity' => (int)$item['quantity']];
+        }
+        $stmt->close();
+    }
+} catch (Throwable $error) {
+    error_log('Dashboard data query failed: ' . $error->getMessage());
+    $dashboardData['error'] = 'Dashboard data could not be loaded. Check the database schema and connection.';
+}
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -73,7 +143,7 @@
                         <h3 class="kpi-title">Today's Revenue</h3>
                         <span class="kpi-icon"><i class="fas fa-peso-sign"></i></span>
                     </div>
-                    <div class="kpi-value">-</div>
+                    <div class="kpi-value" data-kpi="todayRevenue">-</div>
                 </div>
 
                 <div class="kpi-card">
@@ -81,7 +151,7 @@
                         <h3 class="kpi-title">Monthly Revenue</h3>
                         <span class="kpi-icon"><i class="fas fa-chart-line"></i></span>
                     </div>
-                    <div class="kpi-value">-</div>
+                    <div class="kpi-value" data-kpi="monthlyRevenue">-</div>
                 </div>
 
                 <div class="kpi-card">
@@ -89,7 +159,7 @@
                         <h3 class="kpi-title">Average Order Value</h3>
                         <span class="kpi-icon"><i class="fas fa-shopping-bag"></i></span>
                     </div>
-                    <div class="kpi-value">-</div>
+                    <div class="kpi-value" data-kpi="averageOrderValue">-</div>
                 </div>
 
                 <div class="kpi-card clickable" data-navigate="inventory">
@@ -97,7 +167,7 @@
                         <h3 class="kpi-title">Products in Stock</h3>
                         <span class="kpi-icon"><i class="fas fa-boxes"></i></span>
                     </div>
-                    <div class="kpi-value">-</div>
+                    <div class="kpi-value" data-kpi="productsInStock">-</div>
                 </div>
 
                 <div class="kpi-card clickable" data-navigate="inventory">
@@ -105,7 +175,7 @@
                         <h3 class="kpi-title">Total Items</h3>
                         <span class="kpi-icon"><i class="fas fa-box"></i></span>
                     </div>
-                    <div class="kpi-value">-</div>
+                    <div class="kpi-value" data-kpi="totalItems">-</div>
                 </div>
 
                 <div class="kpi-card clickable" data-navigate="inventory">
@@ -113,7 +183,7 @@
                         <h3 class="kpi-title">Low Stock</h3>
                         <span class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></span>
                     </div>
-                    <div class="kpi-value">-</div>
+                    <div class="kpi-value" data-kpi="lowStock">-</div>
                 </div>
 
                 <div class="kpi-card clickable" data-navigate="inventory">
@@ -121,7 +191,7 @@
                         <h3 class="kpi-title">Out of Stock</h3>
                         <span class="kpi-icon"><i class="fas fa-ban"></i></span>
                     </div>
-                    <div class="kpi-value">-</div>
+                    <div class="kpi-value" data-kpi="outOfStock">-</div>
                 </div>
 
                 <div class="kpi-card clickable" data-navigate="inventory">
@@ -129,7 +199,7 @@
                         <h3 class="kpi-title">Total Value</h3>
                         <span class="kpi-icon"><i class="fas fa-peso-sign"></i></span>
                     </div>
-                    <div class="kpi-value">-</div>
+                    <div class="kpi-value" data-kpi="totalValue">-</div>
                 </div>
             </section>
 
@@ -160,6 +230,7 @@
     </div>
 
     <script src="user-profile.js?v=2"></script>
-    <script src="dashboard.js"></script>
+    <script>window.dashboardData = <?php echo json_encode($dashboardData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;</script>
+    <script src="dashboard.js?v=3"></script>
 </body>
 </html>
