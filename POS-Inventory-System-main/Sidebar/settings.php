@@ -383,7 +383,7 @@
     </div>
 
     <script src="user-profile.js"></script>
-    <script src="settings.js"></script>
+    <script src="settings.js?v=2"></script>
 </body>
 </html>
 

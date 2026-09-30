@@ -43,6 +43,7 @@ CREATE TABLE `user_settings` (
   `user_id` INT UNSIGNED NOT NULL,
   `language_code` VARCHAR(10) DEFAULT 'en',
   `date_format` VARCHAR(20) DEFAULT 'MM/DD/YYYY',
+  `selected_date` DATE DEFAULT NULL,
   `time_format` ENUM('12h','24h') DEFAULT '12h',
   `timezone` VARCHAR(60) DEFAULT 'Asia/Manila',
   `currency_code` VARCHAR(3) DEFAULT 'PHP',
