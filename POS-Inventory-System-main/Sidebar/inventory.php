@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="dashboard.css">
     <link rel="stylesheet" href="inventory.css">
+    <link rel="stylesheet" href="system-theme.css">
 </head>
 <body>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>

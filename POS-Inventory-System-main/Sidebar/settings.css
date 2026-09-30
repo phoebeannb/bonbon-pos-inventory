@@ -2,6 +2,7 @@
 
 .settings-main {
     background-color: #fdfdf8;
+    min-width: 0;
 }
 
 .settings-tabs {
@@ -39,7 +40,7 @@
 
 .profile-layout {
     display: grid;
-    grid-template-columns: 320px 1fr;
+    grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
     gap: 25px;
 }
 
@@ -50,6 +51,7 @@
     border-radius: 12px;
     padding: 25px;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    min-width: 0;
 }
 
 .profile-avatar {
@@ -228,6 +230,7 @@
     position: relative;
     border: 1px solid #ececec;
     border-radius: 8px;
+    min-width: 0;
 }
 
 .logs-description {
@@ -242,10 +245,11 @@
 
 .logs-table {
     width: 100%;
+    min-width: 720px;
     border-collapse: separate;
     border-spacing: 0;
     font-size: 14px;
-    table-layout: fixed;
+    table-layout: auto;
 }
 
 .logs-table th,
@@ -353,7 +357,7 @@
 /* System Settings */
 .settings-layout-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 24px;
     align-items: start;
 }
@@ -815,6 +819,10 @@
     .security-overview {
         position: static;
     }
+
+    .settings-layout-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 768px) {
@@ -1006,7 +1014,14 @@
 
 @media (max-width: 480px) {
     .tab-btn {
-        flex: 1 1 100%;
+        flex: 1 1 calc(50% - 6px);
+        padding: 10px 8px;
+    }
+
+    .profile-card,
+    .profile-form,
+    .card {
+        padding: 14px;
     }
 
     .profile-avatar {
@@ -1026,5 +1041,30 @@
     .primary-btn {
         width: 100%;
         text-align: center;
+    }
+
+    .settings-header h3 {
+        font-size: 19px;
+    }
+
+    .date-picker-section {
+        padding: 12px;
+    }
+
+    .overview-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .overview-tile {
+        padding: 12px 8px;
+    }
+
+    .tile-value {
+        font-size: 26px;
+    }
+
+    .logs-description,
+    .about-value {
+        overflow-wrap: anywhere;
     }
 }
