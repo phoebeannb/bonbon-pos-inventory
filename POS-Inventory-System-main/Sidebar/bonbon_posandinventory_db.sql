@@ -427,30 +427,30 @@ VALUES
 
 INSERT INTO `products`
   (`product_id`, `client_product_id`, `category_id`, `name`, `description`, `unit`, `sku`,
-   `cost_price`, `selling_price`, `stock_quantity`, `reorder_level`, `supplier_id`, `image_url`, `is_active`, `created_by`)
+   `cost_price`, `selling_price`, `stock_quantity`, `reorder_level`, `image_path`, `is_active`, `created_by`)
 VALUES
   (2010, 'BT-1010', 2, 'Brewed Assam Black Tea', 'Batch of brewed Assam tea.', 'batch', 'BT-1010',
-   0.00, 0.00, 8, 3, 1, 'Images/Logo.png', 1, 1),
+   0.00, 0.00, 8, 3, 'Images/Logo.png', 1, 1),
   (2011, 'BT-1011', 2, 'Simple Syrup', 'Batch of simple syrup.', 'batch', 'BT-1011',
-   0.00, 0.00, 96, 20, 1, 'Images/Logo.png', 1, 1),
+   0.00, 0.00, 96, 20, 'Images/Logo.png', 1, 1),
   (2012, 'BT-1012', 2, 'Milk Syrup (Prep)', 'Batch of milk syrup.', 'batch', 'BT-1012',
-   0.00, 0.00, 24, 10, 1, 'Images/Logo.png', 1, 1),
+   0.00, 0.00, 24, 10, 'Images/Logo.png', 1, 1),
   (2013, 'BT-1013', 2, 'Brown Sugar Sauce', 'Batch of brown sugar sauce.', 'batch', 'BT-1013',
-   0.00, 0.00, 60, 15, 1, 'Images/Logo.png', 1, 1),
+   0.00, 0.00, 60, 15, 'Images/Logo.png', 1, 1),
   (2014, 'BT-1014', 2, 'Brown Sugar Syrup (Prep)', 'Batch of muscovado syrup.', 'batch', 'BT-1014',
-   0.00, 0.00, 16, 6, 1, 'Images/Logo.png', 1, 1),
+   0.00, 0.00, 16, 6, 'Images/Logo.png', 1, 1),
   (2015, 'BT-1015', 2, 'Tapioca Pearls (Prep)', 'Batch of cooked tapioca pearls.', 'batch', 'BT-1015',
-   0.00, 0.00, 11, 5, 1, 'Images/Logo.png', 1, 1),
+   0.00, 0.00, 11, 5, 'Images/Logo.png', 1, 1),
   (2016, 'BT-1016', 2, 'Coffee Jelly (Prep)', 'Batch of coffee jelly.', 'batch', 'BT-1016',
-   0.00, 0.00, 13, 5, 1, 'Images/Logo.png', 1, 1),
+   0.00, 0.00, 13, 5, 'Images/Logo.png', 1, 1),
   (2017, 'BT-1017', 2, 'Egg Pudding (Prep)', 'Batch of egg pudding.', 'batch', 'BT-1017',
-   0.00, 0.00, 20, 8, 1, 'Images/Logo.png', 1, 1),
+   0.00, 0.00, 20, 8, 'Images/Logo.png', 1, 1),
   (2018, 'BT-1018', 2, 'Cream Puff (Prep)', 'Batch of cream puff.', 'batch', 'BT-1018',
-   0.00, 0.00, 10, 5, 1, 'Images/Logo.png', 1, 1),
+   0.00, 0.00, 10, 5, 'Images/Logo.png', 1, 1),
   (2019, 'BT-1019', 2, 'Cream Cheese (Prep)', 'Batch of cream cheese.', 'batch', 'BT-1019',
-   0.00, 0.00, 8, 4, 1, 'Images/Logo.png', 1, 1),
+   0.00, 0.00, 8, 4, 'Images/Logo.png', 1, 1),
   (2020, 'BT-1020', 2, 'Rock Salt and Cheese (Prep)', 'Batch of rock salt and cheese.', 'batch', 'BT-1020',
-   0.00, 0.00, 6, 3, 1, 'Images/Logo.png', 1, 1);
+   0.00, 0.00, 6, 3, 'Images/Logo.png', 1, 1);
 
 -- Variants for bubble tea drinks (small/medium/large)
 INSERT INTO `product_variants`
