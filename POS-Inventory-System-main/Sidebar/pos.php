@@ -59,10 +59,10 @@
                 <button class="sidebar-toggle" id="sidebarToggle">
                     <i class="fas fa-bars"></i>
                 </button>
-                <h2 class="page-title">POS</h2>
+                <h2 class="page-title">Point of Sale</h2>
                 <div class="user-profile">
                     <div class="user-icon">
-                        <img src="Bonbon Pics/Logo.png" alt="User avatar" data-user-avatar data-default-avatar="Bonbon Pics/Logo.png">
+                        <img src="\Images\Logo.png" alt="User avatar" data-user-avatar data-default-avatar="\Images\Logo.png">
                     </div>
                     <span class="user-name" data-user-name>User Name</span>
                 </div>
