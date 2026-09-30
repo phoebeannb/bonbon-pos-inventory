@@ -1,7 +1,7 @@
 // Shared user profile helper
 (function () {
     const STORAGE_KEY = 'bonbonUserProfile';
-    const DEFAULT_AVATAR = 'Bonbon Pics/Logo.png';
+    const DEFAULT_AVATAR = 'Images/Logo.png';
 
     function loadProfile() {
         const defaults = {
