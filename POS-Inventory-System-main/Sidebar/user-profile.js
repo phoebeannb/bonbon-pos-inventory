@@ -53,6 +53,13 @@
             const profile = event.detail || loadProfile();
             applyProfile(profile);
         });
+
+        // Keep the sidebar in sync when Settings is saved in another tab.
+        window.addEventListener('storage', event => {
+            if (event.key === STORAGE_KEY) {
+                applyProfile(loadProfile());
+            }
+        });
     }
 
     document.addEventListener('DOMContentLoaded', init);

@@ -21,7 +21,6 @@
                 <img src="Images/Logo.png" alt="User avatar" class="sidebar-user-avatar" data-user-avatar data-default-avatar="Images/Logo.png">
                 <div class="sidebar-user-text">
                     <span class="sidebar-user-name" data-user-name>Bonbon User</span>
-                    <small class="sidebar-user-email" data-user-email>user@example.com</small>
                 </div>
             </div>
             
@@ -160,7 +159,7 @@
         </main>
     </div>
 
-    <script src="user-profile.js"></script>
+    <script src="user-profile.js?v=2"></script>
     <script src="dashboard.js"></script>
 </body>
 </html>

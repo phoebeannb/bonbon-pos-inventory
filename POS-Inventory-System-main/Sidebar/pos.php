@@ -22,7 +22,6 @@
                 <img src="Images/Logo.png" alt="User avatar" class="sidebar-user-avatar" data-user-avatar data-default-avatar="Images/Logo.png">
                 <div class="sidebar-user-text">
                     <span class="sidebar-user-name" data-user-name>Bonbon User</span>
-                    <small class="sidebar-user-email" data-user-email>user@example.com</small>
                 </div>
             </div>
             
@@ -254,7 +253,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="user-profile.js"></script>
+    <script src="user-profile.js?v=2"></script>
     <script src="pos.js?v=2"></script>
 </body>
 </html>

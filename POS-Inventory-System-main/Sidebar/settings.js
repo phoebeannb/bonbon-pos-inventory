@@ -56,6 +56,23 @@ async function settingsApi(action, method = 'POST', payload = {}, formData = nul
 async function loadSettingsFromDatabase() {
     try {
         const result = await settingsApi('load', 'GET');
+        const legacyEmail = profileData.email?.trim();
+        const isCustomLegacyEmail = legacyEmail &&
+            legacyEmail.toLowerCase() !== 'user@example.com' &&
+            legacyEmail.toLowerCase() !== result.profile.email.toLowerCase() &&
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(legacyEmail);
+
+        // Migrate an email saved by the older localStorage-only settings page
+        // instead of replacing it with the SQL seed account email.
+        if (result.profile.email.toLowerCase() === 'admin@bonbonkitchen.ph' && isCustomLegacyEmail) {
+            try {
+                await settingsApi('profile', 'POST', { ...result.profile, email: legacyEmail });
+                result.profile.email = legacyEmail;
+            } catch (error) {
+                console.error('Unable to migrate the previously saved email:', error);
+            }
+        }
+
         profileData = result.profile;
         securityData = { ...securityData, ...result.security };
         systemSettings = result.system;
